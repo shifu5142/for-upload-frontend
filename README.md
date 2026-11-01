@@ -56,4 +56,4 @@ bun run api:generate
 | --- | --- | --- |
 | `NEXT_PUBLIC_API_URL` | `http://localhost:5000` | Browser-accessible NestJS API URL |
 | `OPENAPI_SCHEMA_URL` | `http://localhost:5000/docs-json` | Development-time schema URL |
-"# front-end-test-extension" 
+"# for-upload-frontend" 
