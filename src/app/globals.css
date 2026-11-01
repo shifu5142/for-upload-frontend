@@ -7,7 +7,7 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-heebo), var(--font-geist-sans), "Segoe UI", sans-serif;
   --font-mono: var(--font-geist-mono);
   --font-heading: var(--font-geist-sans);
   --animate-float: float 6s ease-in-out infinite;
@@ -56,8 +56,8 @@
   --card-foreground: oklch(0.205 0.04 277);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.205 0.04 277);
-  --primary: oklch(0.488 0.22 277);
-  --primary-foreground: oklch(0.985 0.01 277);
+  --primary: oklch(0.22 0.02 260);
+  --primary-foreground: oklch(0.985 0 0);
   --secondary: oklch(0.96 0.02 277);
   --secondary-foreground: oklch(0.3 0.08 277);
   --muted: oklch(0.965 0.012 277);
@@ -67,7 +67,7 @@
   --destructive: oklch(0.577 0.245 27.325);
   --border: oklch(0.91 0.02 277);
   --input: oklch(0.91 0.02 277);
-  --ring: oklch(0.488 0.22 277);
+  --ring: oklch(0.55 0.16 262);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
@@ -149,4 +149,61 @@
   .animate-float {
     animation: none;
   }
+
+  .accordion-body {
+    transition: none;
+  }
+
+  .category-shimmer {
+    animation: none;
+  }
+}
+
+.accordion-body {
+  display: grid;
+  grid-template-rows: 0fr;
+}
+
+.accordion-body[data-animate="true"] {
+  transition: grid-template-rows 220ms ease;
+}
+
+.accordion-body[data-open="true"] {
+  grid-template-rows: 1fr;
+}
+
+.accordion-inner {
+  min-height: 0;
+  overflow: hidden;
+}
+
+@keyframes category-shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
+}
+
+.category-shimmer {
+  background-color: #f4f4f5;
+  background-image: linear-gradient(
+    100deg,
+    #f4f4f5 30%,
+    #ffffff 50%,
+    #f4f4f5 70%
+  );
+  background-size: 200% 100%;
+  animation: category-shimmer 1.35s ease-in-out infinite;
+}
+
+.admin-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #e4e4e7 transparent;
+}
+
+button:not(:disabled):not(.cursor-grab):not(.cursor-not-allowed):hover,
+[role="button"]:not([aria-disabled="true"]):not(.cursor-grab):hover {
+  cursor: pointer;
 }

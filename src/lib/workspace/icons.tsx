@@ -1,0 +1,75 @@
+import {
+  AlertTriangle,
+  Briefcase,
+  Check,
+  ClipboardList,
+  Clock,
+  FileText,
+  GraduationCap,
+  Heart,
+  Lightbulb,
+  type LucideIcon,
+  MessageSquare,
+  MessagesSquare,
+  Mic,
+  Phone,
+  RefreshCw,
+  Search,
+  Send,
+  Shield,
+  Sparkles,
+  Target,
+  Users,
+} from "lucide-react";
+import type { IconName } from "@/lib/workspace/types";
+
+export const ICONS: Record<IconName, LucideIcon> = {
+  message: MessageSquare,
+  messages: MessagesSquare,
+  check: Check,
+  graduation: GraduationCap,
+  users: Users,
+  briefcase: Briefcase,
+  sparkles: Sparkles,
+  clipboard: ClipboardList,
+  shield: Shield,
+  clock: Clock,
+  alert: AlertTriangle,
+  file: FileText,
+  phone: Phone,
+  mic: Mic,
+  target: Target,
+  refresh: RefreshCw,
+  lightbulb: Lightbulb,
+  send: Send,
+  heart: Heart,
+  search: Search,
+};
+
+export const ICON_CHOICES: { name: IconName; label: string }[] = [
+  { name: "message", label: "הודעה" },
+  { name: "messages", label: "שיחה" },
+  { name: "check", label: "אישור" },
+  { name: "graduation", label: "לימודים" },
+  { name: "users", label: "אנשים" },
+  { name: "briefcase", label: "עסק" },
+  { name: "sparkles", label: "רעיון" },
+  { name: "clipboard", label: "רשימה" },
+  { name: "shield", label: "התנגדות" },
+  { name: "clock", label: "זמן" },
+  { name: "alert", label: "הצלה" },
+  { name: "file", label: "מסמך" },
+  { name: "phone", label: "שיחת טלפון" },
+  { name: "mic", label: "הקלטה" },
+  { name: "target", label: "מטרה" },
+  { name: "refresh", label: "שחזור" },
+  { name: "lightbulb", label: "תובנה" },
+  { name: "send", label: "שליחה" },
+  { name: "heart", label: "ערך" },
+  { name: "search", label: "בירור" },
+];
+
+export function WorkspaceIcon({ name, className }: { name: IconName; className?: string }) {
+  const Icon = ICONS[name] ?? MessageSquare;
+  return <Icon className={className} aria-hidden="true" />;
+}

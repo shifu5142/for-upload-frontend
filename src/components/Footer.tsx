@@ -1,7 +1,28 @@
 import { Logo } from "@/components/Logo";
 import { navLinks } from "@/lib/nav";
 import { plans } from "@/lib/plans";
-
+const features = [
+  {
+    name: "AI Marketing Assistant",
+    description:
+      "An AI marketing assistant that lives in Chrome — analyze pages, generate ideas, and move faster without leaving your browser.",
+  },
+  {
+    name: "Content Analysis",
+    description:
+      "An AI marketing assistant that lives in Chrome — analyze pages, generate ideas, and move faster without leaving your browser.",
+  },
+  {
+    name: "Smart Suggestions",
+    description:
+      "An AI marketing assistant that lives in Chrome — analyze pages, generate ideas, and move faster without leaving your browser.",
+  },
+  {
+    name: "Faster Workflow",
+    description:
+      "An AI marketing assistant that lives in Chrome — analyze pages, generate ideas, and move faster without leaving your browser.",
+  },
+];
 export function Footer() {
   const year = new Date().getFullYear();
 
@@ -11,8 +32,8 @@ export function Footer() {
         <div className="max-w-sm">
           <Logo className="[&_span:last-child]:text-white" />
           <p className="mt-4 text-sm leading-6 text-slate-400">
-            An AI marketing assistant that lives in Chrome — analyze pages, generate ideas, and move
-            faster without leaving your browser.
+            An AI marketing assistant that lives in Chrome — analyze pages,
+            generate ideas, and move faster without leaving your browser.
           </p>
         </div>
 
@@ -36,11 +57,12 @@ export function Footer() {
 
         <div>
           <p className="text-sm font-semibold text-white">Features</p>
-          <ul className="mt-4 space-y-2.5 text-sm text-slate-400">
-            <li>AI Marketing Assistant</li>
-            <li>Content Analysis</li>
-            <li>Smart Suggestions</li>
-            <li>Faster Workflow</li>
+          <ul className="mt-4 space-y-2.5">
+            {features.map((feature) => (
+              <li key={feature.name}>
+                <p className="text-sm text-slate-400">{feature.name}</p>
+              </li>
+            ))}
           </ul>
         </div>
 
@@ -64,7 +86,10 @@ export function Footer() {
       <div className="border-t border-white/10">
         <div className="mx-auto flex max-w-6xl flex-col gap-2 px-4 py-6 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <p>© {year} Marketing AI. All rights reserved.</p>
-          <a href="#how-it-works" className="transition-colors hover:text-slate-300">
+          <a
+            href="#how-it-works"
+            className="transition-colors hover:text-slate-300"
+          >
             How It Works
           </a>
         </div>
