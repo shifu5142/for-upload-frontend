@@ -2,9 +2,8 @@
 
 import { useTranslations } from "next-intl";
 import type { ChangeEvent, Dispatch, SetStateAction } from "react";
+import { backendUrl } from "@/lib/backend-url";
 import type { Category } from "@/lib/workspace/types";
-
-const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
 
 export type FetchedAttachment = {
   id: string;

@@ -36,6 +36,7 @@ import { IconPicker } from "@/components/admin/IconPicker";
 import { PlaybookRow } from "@/components/admin/PlaybookRow";
 import { HighlightText } from "@/components/admin/Search";
 import { Button } from "@/components/ui/button";
+import { backendUrl } from "@/lib/backend-url";
 import { cn } from "@/lib/utils";
 import {
   categoryDragId,
@@ -51,8 +52,6 @@ import type {
   CategorySubcategory,
   Playbook,
 } from "@/lib/workspace/types";
-
-const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
 
 function subcategoriesInOrder(
   subcategories: CategorySubcategory[],

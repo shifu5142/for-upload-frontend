@@ -6,6 +6,7 @@ import { useState } from "react";
 import { refreshDisplayedCategories } from "@/components/sales-manager/CategoriesPanel";
 import { Button } from "@/components/ui/button";
 import { useSalesManager } from "@/lib/sales-manager/store";
+import { backendUrl } from "@/lib/backend-url";
 import { useWorkspace } from "@/lib/workspace/store";
 import type { Category } from "@/lib/workspace/types";
 
@@ -54,7 +55,6 @@ export function PublishPanel() {
       void sales.publishChanges();
       setConfirmOpen(false);
       //to server
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
       const response = await fetch(
         `${backendUrl}/prompts-data/category-publish`,
         {

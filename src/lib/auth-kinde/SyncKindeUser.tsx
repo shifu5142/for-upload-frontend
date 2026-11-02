@@ -2,6 +2,7 @@
 
 import { useKindeBrowserClient } from "@kinde-oss/kinde-auth-nextjs";
 import { useEffect, useRef } from "react";
+import { backendUrl } from "@/lib/backend-url";
 
 export default function SyncKindeUser() {
   const { user, isAuthenticated, isLoading, getAccessTokenRaw } =
@@ -32,7 +33,7 @@ export default function SyncKindeUser() {
           return;
         }
         const response = await fetch(
-          `${process.env.NEXT_PUBLIC_BACKEND_URL}/auth/sync-kinde-user`,
+          `${backendUrl}/auth/sync-kinde-user`,
           {
             method: "POST",
             headers: {

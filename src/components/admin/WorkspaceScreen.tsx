@@ -43,6 +43,7 @@ import {
 } from "@/components/sales-manager/CategoriesPanel";
 import { SalesManager } from "@/components/sales-manager/SalesManager";
 import SyncKindeUser from "@/lib/auth-kinde/SyncKindeUser";
+import { backendUrl } from "@/lib/backend-url";
 import {
   addSubcategoryToCategory,
   categoriesFromBackend,
@@ -147,7 +148,6 @@ function WorkspaceShell() {
 
   useEffect(() => {
     if (isLoading) return;
-    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
     if (!backendUrl) {
       setCategoriesStatus("error");
       return;
@@ -374,7 +374,6 @@ function WorkspaceShell() {
     movedAcrossRef.current = false;
     setDragId(null);
   }
-  const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
   //לכן מגיע הפרמטרים כדי לעשות update
   async function saveEditor(draft: PlaybookDraft) {
     const token = await getAccessTokenRaw();
@@ -479,8 +478,9 @@ function WorkspaceShell() {
           changeCount={workspace.changeCount}
           onCreatePlaybook={() => openCreate()}
           canCreate={canEdit}
+          canPublish={canEdit}
           onPublish={() => {
-            if (workspace.changeCount === 0) return;
+            if (!canEdit || workspace.changeCount === 0) return;
             setPublishOpen(true);
           }}
           onOpenPreview={() => setPreviewOpen(true)}

@@ -12,7 +12,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { apiBaseUrl, apiClient } from "@/lib/api/client";
+import { backendUrl } from "@/lib/backend-url";
 
 type ApiState =
   | { kind: "loading" }
@@ -27,11 +27,13 @@ export function StatusChecker() {
     setState({ kind: "loading" });
 
     try {
-      const { data, response } = await apiClient.GET("/api/v1/health", {
-        signal,
-      });
+      const response = await fetch(`${backendUrl}/health`, { signal });
+      const data = (await response.json()) as {
+        status?: string;
+        timestamp?: string;
+      };
 
-      if (!response.ok || data?.status !== "ok") {
+      if (!response.ok || data.status !== "ok" || !data.timestamp) {
         throw new Error("API health check failed");
       }
 
@@ -73,7 +75,7 @@ export function StatusChecker() {
         <div className="space-y-1">
           <p className="text-sm font-medium">API URL</p>
           <code className="block overflow-x-auto rounded-md bg-muted px-3 py-2 text-xs">
-            {apiBaseUrl}
+            {backendUrl}
           </code>
         </div>
         {state.kind === "connected" && (

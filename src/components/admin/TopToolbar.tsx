@@ -18,6 +18,7 @@ export function TopToolbar({
   onOpenPreview,
   greeting,
   canCreate,
+  canPublish,
 }: {
   query: string;
   onQueryChange: (value: string) => void;
@@ -27,6 +28,7 @@ export function TopToolbar({
   onOpenPreview: () => void;
   greeting: string | null;
   canCreate: boolean;
+  canPublish: boolean;
 }) {
   const t = useTranslations("Header");
   const clean = changeCount === 0;
@@ -91,17 +93,19 @@ export function TopToolbar({
           <Plus className="size-3.5" />
           {t("playbook")}
         </Button>
-        <span title={clean ? t("nothingToPublish") : t("publishHint")}>
-          <Button
-            type="button"
-            onClick={onPublish}
-            disabled={clean}
-            className="!bg-[#2563eb] !text-white hover:!bg-[#1d4ed8]"
-          >
-            <Upload className="size-3.5" />
-            {t("publish")}
-          </Button>
-        </span>
+        {canPublish ? (
+          <span title={clean ? t("nothingToPublish") : t("publishHint")}>
+            <Button
+              type="button"
+              onClick={onPublish}
+              disabled={clean}
+              className="!bg-[#2563eb] !text-white hover:!bg-[#1d4ed8]"
+            >
+              <Upload className="size-3.5" />
+              {t("publish")}
+            </Button>
+          </span>
+        ) : null}
         <LanguageSwitcher />
         {greeting ? (
           <Popover.Root>

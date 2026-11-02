@@ -9,6 +9,7 @@ import { ToggleRow } from "@/components/admin/ToggleRow";
 import { Button } from "@/components/ui/button";
 import { createId } from "@/lib/workspace/mock-data";
 import { emptyDraft, fromPlaybook } from "@/lib/workspace/playbook-draft";
+import { backendUrl } from "@/lib/backend-url";
 import { useWorkspaceUi } from "@/lib/workspace/ui";
 import type {
   Attachment,
@@ -16,8 +17,6 @@ import type {
   Playbook,
   PlaybookDraft,
 } from "@/lib/workspace/types";
-
-const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
 
 const fieldClass =
   "w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm text-zinc-900 outline-none transition-colors placeholder:text-zinc-400 focus:border-blue-500 focus:ring-3 focus:ring-blue-500/15";

@@ -7,10 +7,10 @@ import { Toast } from "@/components/admin/Toast";
 import { useSalesNav } from "@/components/sales-manager/nav";
 import { Button } from "@/components/ui/button";
 import { useSalesManager } from "@/lib/sales-manager/store";
+import { backendUrl } from "@/lib/backend-url";
 import { useWorkspace } from "@/lib/workspace/store";
 import type { IconName } from "@/lib/workspace/types";
 
-const BackendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
 let refreshCategoryList = () => {};
 let showSubcategoryDeleteNotice = (_message: string) => {};
 
@@ -32,7 +32,7 @@ export async function logDeleteClick(
   try {
     console.log("הוא לחץ על זה");
     console.log(id);
-    const response = await fetch(`${BackendUrl}/category/${id}`, {
+    const response = await fetch(`${backendUrl}/category/${id}`, {
       method: "DELETE",
       headers: {
         "Content-Type": "application/json",
@@ -57,7 +57,7 @@ export async function logDeleteClickSubcategory(
   categoryId: string,
 ) {
   try {
-    const response = await fetch(`${BackendUrl}/category/subcategoriesdelete`, {
+    const response = await fetch(`${backendUrl}/category/subcategoriesdelete`, {
       method: "DELETE",
       headers: {
         "Content-Type": "application/json",
