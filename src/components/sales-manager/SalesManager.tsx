@@ -161,6 +161,7 @@ function SalesManagerShell({ categories }: { categories: Category[] }) {
     }
     setTab("files");
   }
+  console.log("SalesManager is working");
 
   return (
     <SalesNavProvider openTab={goToTab}>
