@@ -9,7 +9,6 @@ import { ToggleRow } from "@/components/admin/ToggleRow";
 import { Button } from "@/components/ui/button";
 import { createId } from "@/lib/workspace/mock-data";
 import { emptyDraft, fromPlaybook } from "@/lib/workspace/playbook-draft";
-import { backendUrl } from "@/lib/backend-url";
 import { useWorkspaceUi } from "@/lib/workspace/ui";
 import type {
   Attachment,
@@ -48,7 +47,7 @@ export function PlaybookEditorDrawer({
   categoryId: string;
   categories: Category[];
   onClose: () => void;
-  onSave: (draft: PlaybookDraft) => void;
+  onSave: (draft: PlaybookDraft) => void | Promise<void>;
   onDelete: () => void;
 }) {
   const formId = useId();
@@ -60,9 +59,13 @@ export function PlaybookEditorDrawer({
   );
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+  const [saving, setSaving] = useState(false);
   const { getAccessToken } = useWorkspaceUi();
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      setSaving(false);
+      return;
+    }
     setError("");
     setFieldErrors({});
     if (mode === "edit" && playbook)
@@ -99,6 +102,7 @@ export function PlaybookEditorDrawer({
   }
 
   function save() {
+    if (saving) return;
     const nextErrors: FieldErrors = {};
     if (!draft.name.trim()) nextErrors.name = t("required");
     if (!draft.categoryId) nextErrors.categoryId = t("chooseCategory");
@@ -112,36 +116,31 @@ export function PlaybookEditorDrawer({
       return;
     }
 
+    setSaving(true);
+    void createPlaybook();
+
     async function createPlaybook() {
-      const token = await getAccessToken();
-      if (!token) {
-        setError("Unauthorized");
-        return;
+      try {
+        const token = await getAccessToken();
+        if (!token) {
+          setError("Unauthorized");
+          return;
+        }
+        localStorage.setItem("token", token);
+        setFieldErrors({});
+        setError("");
+        await onSave(draft);
+      } finally {
+        setSaving(false);
       }
-      localStorage.setItem("token", token);
-      setFieldErrors({});
-      setError("");
-      onSave(draft);
-      const res = await fetch(`${backendUrl}/category/toggle-subcategory`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(draft),
-      });
-      if (!res.ok) {
-        throw new Error("Failed to create playbook");
-      }
-      const data = await res.json();
     }
-    createPlaybook();
   }
 
   return (
     <Dialog.Root
       open={open}
       onOpenChange={(next) => {
+        if (!next && saving) return;
         if (!next) onClose();
       }}
     >
@@ -149,7 +148,8 @@ export function PlaybookEditorDrawer({
         <Dialog.Backdrop className="fixed inset-0 z-40 bg-zinc-950/20 transition-opacity data-[ending-style]:opacity-0 data-[starting-style]:opacity-0" />
         <Dialog.Popup
           initialFocus={nameRef}
-          className="fixed inset-y-0 end-0 z-50 flex w-[min(100%,460px)] flex-col bg-white shadow-2xl outline-none transition-transform duration-200 data-[ending-style]:-translate-x-full data-[starting-style]:-translate-x-full"
+          aria-busy={saving}
+          className={`fixed inset-y-0 end-0 z-50 flex w-[min(100%,460px)] flex-col bg-white shadow-2xl outline-none transition-transform duration-200 data-[ending-style]:-translate-x-full data-[starting-style]:-translate-x-full${saving ? " cursor-progress" : ""}`}
         >
           <div className="flex items-start justify-between gap-3 border-b border-zinc-200 px-5 py-4">
             <div>
@@ -162,15 +162,17 @@ export function PlaybookEditorDrawer({
             </div>
             <Dialog.Close
               aria-label={t("close")}
-              className="flex size-8 items-center justify-center rounded-lg text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800"
+              disabled={saving}
+              className="flex size-8 items-center justify-center rounded-lg text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 disabled:cursor-progress"
             >
               <X className="size-4" />
             </Dialog.Close>
           </div>
 
+          <div className="relative flex min-h-0 flex-1 flex-col">
           <form
             id={formId}
-            className="admin-scroll flex-1 space-y-5 overflow-y-auto px-5 py-5"
+            className={`admin-scroll flex-1 space-y-5 overflow-y-auto px-5 py-5${saving ? " pointer-events-none" : ""}`}
             onSubmit={(event) => {
               event.preventDefault();
               save();
@@ -352,19 +354,44 @@ export function PlaybookEditorDrawer({
                 <button
                   type="button"
                   onClick={onDelete}
-                  className="mt-3 text-sm font-medium text-red-600 hover:text-red-700"
+                  disabled={saving}
+                  className="mt-3 text-sm font-medium text-red-600 hover:text-red-700 disabled:cursor-progress"
                 >
                   {t("delete")}
                 </button>
               </div>
             ) : null}
           </form>
+          {saving ? (
+            <span
+              className="category-shimmer pointer-events-none absolute inset-0 opacity-70"
+              aria-hidden
+            />
+          ) : null}
+          </div>
 
           <div className="flex justify-end gap-2 border-t border-zinc-200 px-5 py-4">
-            <Button type="button" variant="outline" onClick={onClose}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onClose}
+              disabled={saving}
+            >
               {t("cancel")}
             </Button>
-            <Button type="button" onClick={save}>
+            <Button
+              type="button"
+              onClick={save}
+              disabled={saving}
+              aria-busy={saving}
+              className={saving ? "cursor-progress" : undefined}
+            >
+              {saving ? (
+                <span
+                  className="size-3.5 animate-spin rounded-full border border-current border-t-transparent"
+                  aria-hidden
+                />
+              ) : null}
               {mode === "edit" ? t("save") : t("create")}
             </Button>
           </div>

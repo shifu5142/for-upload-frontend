@@ -53,6 +53,7 @@ export type CategorySubcategory = {
   active: boolean;
   position: number;
   items?: SubcategoryItem[];
+  playbookIds?: string[];
 };
 
 export type SavedCategory = {

@@ -112,6 +112,7 @@ export function PlaybooksPanel({
                   showSubcategoryAi
                   aiRequest={aiRequest}
                   onAiPromptReady={onAiPromptReady}
+                  loggedIn
                 />
               );
             })}

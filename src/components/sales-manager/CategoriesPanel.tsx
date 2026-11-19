@@ -30,8 +30,6 @@ export async function logDeleteClick(
   removeCategory?: (id: string) => void,
 ) {
   try {
-    console.log("הוא לחץ על זה");
-    console.log(id);
     const response = await fetch(`${backendUrl}/category/${id}`, {
       method: "DELETE",
       headers: {
@@ -40,13 +38,11 @@ export async function logDeleteClick(
     });
     const data = await response.json();
     if (data.message === "Category deleted successfully") {
-      console.log("קטגוריה נמחקה בהצלחה");
       removeCategory?.(id);
       refreshCategoryList();
     } else {
       console.error("Failed to delete category");
     }
-    console.log(data);
   } catch (error) {
     console.error(error);
   }

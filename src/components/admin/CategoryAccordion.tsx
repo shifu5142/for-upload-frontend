@@ -1,11 +1,9 @@
 "use client";
 
-import { Dialog } from "@base-ui/react/dialog";
 import { Popover } from "@base-ui/react/popover";
 import {
   closestCenter,
   type DragEndEvent,
-  type DraggableAttributes,
   DndContext,
   KeyboardSensor,
   PointerSensor,
@@ -23,8 +21,13 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { ChevronDown, Plus, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { ActiveToggleButton } from "@/components/admin/ActiveToggleButton";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
+import {
+  SortableSubcategoryRow,
+  SubcategoryRow,
+} from "@/components/admin/SubcategoryRow";
 import { ActionMenu, Hint } from "@/components/admin/controls";
 import {
   logDeleteClick,
@@ -35,7 +38,6 @@ import { GripDots } from "@/components/admin/GripDots";
 import { IconPicker } from "@/components/admin/IconPicker";
 import { PlaybookRow } from "@/components/admin/PlaybookRow";
 import { HighlightText } from "@/components/admin/Search";
-import { Button } from "@/components/ui/button";
 import { backendUrl } from "@/lib/backend-url";
 import { cn } from "@/lib/utils";
 import {
@@ -47,11 +49,40 @@ import {
 import { WorkspaceIcon } from "@/lib/workspace/icons";
 import { useWorkspace } from "@/lib/workspace/store";
 import { useWorkspaceUi } from "@/lib/workspace/ui";
-import type {
-  Category,
-  CategorySubcategory,
-  Playbook,
+import {
+  ICON_NAMES,
+  type Category,
+  type CategorySubcategory,
+  type IconName,
+  type Playbook,
 } from "@/lib/workspace/types";
+
+async function changeCategoryIcon(categoryId: string, icon: IconName) {
+  const token = localStorage.getItem("token");
+  if (!token) return null;
+  try {
+    const response = await fetch(`${backendUrl}/category/icon-change`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ categoryId, icon }),
+    });
+    const data = (await response.json()) as { icon?: unknown };
+    if (!response.ok) return null;
+    return data;
+  } catch (error) {
+    console.error(error);
+    return null;
+  }
+}
+
+function iconFromResponse(data: { icon?: unknown } | null): IconName | null {
+  const icon = data?.icon;
+  if (typeof icon !== "string") return null;
+  return ICON_NAMES.find((name) => name === icon) ?? null;
+}
 
 function subcategoriesInOrder(
   subcategories: CategorySubcategory[],
@@ -87,6 +118,7 @@ export function CategoryAccordion({
   showSubcategoryAi = false,
   aiRequest = null,
   onAiPromptReady,
+  loggedIn = false,
 }: {
   category: Category;
   playbooks: Playbook[];
@@ -107,6 +139,7 @@ export function CategoryAccordion({
   showSubcategoryAi?: boolean;
   aiRequest?: { id: string; token: number } | null;
   onAiPromptReady?: (subcategoryId: string, aiPrompt: string) => void;
+  loggedIn?: boolean;
 }) {
   const {
     expanded,
@@ -120,9 +153,11 @@ export function CategoryAccordion({
     deleteCategory,
   } = useWorkspace();
   const [active, setActive] = useState(category.active);
+  const [togglingActive, setTogglingActive] = useState(false);
   const [orderDraft, setOrderDraft] = useState<string[] | null>(null);
   const [savedOrder, setSavedOrder] = useState<string[] | null>(null);
   const [orderConfirmOpen, setOrderConfirmOpen] = useState(false);
+  const [orderPending, setOrderPending] = useState(false);
   const ordering = orderDraft !== null;
   const open =
     ordering || !active || forceOpen || expanded[category.id] !== false;
@@ -133,7 +168,14 @@ export function CategoryAccordion({
     kind: "category" | "subcategory";
     categoryId?: string;
   } | null>(null);
+  const [deletePending, setDeletePending] = useState<{
+    id: string;
+    kind: "category" | "subcategory";
+  } | null>(null);
   const [draftName, setDraftName] = useState(category.name);
+  const [shownName, setShownName] = useState(category.name);
+  const [shownIcon, setShownIcon] = useState(category.icon);
+  const [iconPending, setIconPending] = useState(false);
   const cancelRename = useRef(false);
   const renameInputRef = useRef<HTMLInputElement>(null);
   const {
@@ -166,6 +208,7 @@ export function CategoryAccordion({
   }
 
   async function toggleCategoryActive() {
+    if (togglingActive) return;
     if (!canToggleActive) {
       onToggleBlocked?.();
       return;
@@ -174,24 +217,29 @@ export function CategoryAccordion({
       onChangesBlocked?.();
       return;
     }
-    const token = await getAccessToken();
-    if (!token) {
-      onToggleBlocked?.();
-      return;
+    setTogglingActive(true);
+    try {
+      const token = await getAccessToken();
+      if (!token) {
+        onToggleBlocked?.();
+        return;
+      }
+      const res = await fetch(`${backendUrl}/category/toggle-active`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ categoryId: category.id }),
+      });
+      const data = await res.json();
+      if (!res.ok || typeof data.active !== "boolean") return;
+      setActive(data.active);
+      setCategoryActive(category.id, data.active);
+      refreshDisplayedCategories();
+    } finally {
+      setTogglingActive(false);
     }
-    const res = await fetch(`${backendUrl}/category/toggle-active`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ categoryId: category.id }),
-    });
-    const data = await res.json();
-    if (!res.ok || typeof data.active !== "boolean") return;
-    setActive(data.active);
-    setCategoryActive(category.id, data.active);
-    refreshDisplayedCategories();
   }
 
   function createPlaybook() {
@@ -283,6 +331,29 @@ export function CategoryAccordion({
   }, [category.active]);
 
   useEffect(() => {
+    setShownName(category.name);
+  }, [category.name]);
+
+  useEffect(() => {
+    setShownIcon(category.icon);
+  }, [category.icon]);
+
+  async function selectCategoryIcon(icon: IconName) {
+    if (iconPending) return;
+    setIconPending(true);
+    try {
+      const data = await changeCategoryIcon(category.id, icon);
+      const savedIcon = iconFromResponse(data);
+      if (!savedIcon) return;
+      setShownIcon(savedIcon);
+      setCategoryIcon(category.id, savedIcon);
+      refreshDisplayedCategories();
+    } finally {
+      setIconPending(false);
+    }
+  }
+
+  useEffect(() => {
     const frame = requestAnimationFrame(() => setAnimate(true));
     return () => cancelAnimationFrame(frame);
   }, []);
@@ -303,8 +374,37 @@ export function CategoryAccordion({
       setRenaming(false);
       return;
     }
-    renameCategory(category.id, next);
-    setRenaming(false);
+    const commitRename = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        if (!token) return;
+        console.log("commitRename", next, "category.id", category.id);
+        const response = await fetch(`${backendUrl}/category/rename`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ categoryId: category.id, name: next }),
+        });
+        const data = (await response.json()) as {
+          id?: unknown;
+          name?: unknown;
+        };
+        console.log("commitRename", data);
+        const savedName = typeof data.name === "string" ? data.name : "";
+        const savedId = typeof data.id === "string" ? data.id : category.id;
+        if (response.ok && savedName) {
+          renameCategory(savedId, savedName);
+          setDraftName(savedName);
+          setShownName(savedName);
+          setRenaming(false);
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    };
+    void commitRename();
   }
 
   const visibleSubcategories = [...(category.subcategories ?? [])]
@@ -326,6 +426,7 @@ export function CategoryAccordion({
   }
 
   function finishSubcategoryDrag(event: DragEndEvent) {
+    if (orderPending) return;
     const { active, over } = event;
     if (!over || active.id === over.id) return;
     setOrderDraft((current) => {
@@ -338,31 +439,39 @@ export function CategoryAccordion({
   }
 
   async function confirmSubcategoryOrder() {
-    if (!orderDraft) return;
-    const token = localStorage.getItem("token");
-    const res = await fetch(`${backendUrl}/category/reorder-subcategories`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        order: orderDraft,
-        category: category.id,
-      }),
-    });
-    const data = await res.json();
-    if (res.ok && Array.isArray(data.order)) {
-      setSavedOrder(
-        data.order.filter(
-          (id: unknown): id is string => typeof id === "string",
-        ),
-      );
+    if (!orderDraft || orderPending) return;
+    setOrderPending(true);
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${backendUrl}/category/reorder-subcategories`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          order: orderDraft,
+          category: category.id,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && Array.isArray(data.order)) {
+        setSavedOrder(
+          data.order.filter(
+            (id: unknown): id is string => typeof id === "string",
+          ),
+        );
+      }
+      refreshDisplayedCategories();
+    } finally {
+      setOrderPending(false);
+      setOrderDraft(null);
+      setOrderConfirmOpen(false);
     }
-    setOrderDraft(null);
-    setOrderConfirmOpen(false);
-    refreshDisplayedCategories();
   }
+
+  const deletingCategory =
+    deletePending?.kind === "category" && deletePending.id === category.id;
 
   return (
     <section
@@ -374,6 +483,7 @@ export function CategoryAccordion({
         isDragging && "opacity-50",
         isOver && draggingPlaybook && "border-blue-400 ring-2 ring-blue-100",
         !active && "bg-zinc-50",
+        deletingCategory && "pointer-events-none relative cursor-progress",
       )}
     >
       <div
@@ -403,9 +513,30 @@ export function CategoryAccordion({
             <Popover.Trigger
               aria-label={t("changeIcon")}
               title={t("changeIcon")}
-              className="flex size-8 items-center justify-center rounded-lg bg-zinc-50 text-zinc-600 hover:bg-zinc-100"
+              aria-busy={iconPending}
+              disabled={iconPending}
+              className={cn(
+                "relative flex size-8 items-center justify-center overflow-hidden rounded-lg bg-zinc-50 text-zinc-600",
+                iconPending ? "cursor-progress" : "hover:bg-zinc-100",
+              )}
             >
-              <WorkspaceIcon name={category.icon} className="size-4" />
+              {iconPending ? (
+                <span
+                  className="relative z-10 size-3.5 animate-spin rounded-full border border-current border-t-transparent"
+                  aria-hidden
+                />
+              ) : (
+                <WorkspaceIcon
+                  name={shownIcon}
+                  className="relative z-10 size-4"
+                />
+              )}
+              {iconPending ? (
+                <span
+                  className="category-shimmer pointer-events-none absolute inset-0"
+                  aria-hidden
+                />
+              ) : null}
             </Popover.Trigger>
             <Popover.Portal>
               <Popover.Positioner
@@ -419,8 +550,8 @@ export function CategoryAccordion({
                     {t("iconTitle")}
                   </Popover.Title>
                   <IconPicker
-                    value={category.icon}
-                    onChange={(icon) => setCategoryIcon(category.id, icon)}
+                    value={shownIcon}
+                    onChange={(icon) => void selectCategoryIcon(icon)}
                   />
                 </Popover.Popup>
               </Popover.Positioner>
@@ -434,7 +565,7 @@ export function CategoryAccordion({
             onClick={onChangesBlocked}
             className="flex size-8 items-center justify-center rounded-lg bg-zinc-50 text-zinc-600 hover:bg-zinc-100"
           >
-            <WorkspaceIcon name={category.icon} className="size-4" />
+            <WorkspaceIcon name={shownIcon} className="size-4" />
           </button>
         )}
         <div className="min-w-0 flex-1">
@@ -470,7 +601,7 @@ export function CategoryAccordion({
                 active ? "text-zinc-950" : "cursor-default text-zinc-400",
               )}
             >
-              <HighlightText text={category.name} query={query} />
+              <HighlightText text={shownName} query={query} />
             </button>
           )}
         </div>
@@ -478,18 +609,13 @@ export function CategoryAccordion({
           {playbooks.length + shownSubcategories.length}
         </span>
         {canToggleActive ? (
-          <button
-            type="button"
-            onClick={toggleCategoryActive}
-            className={cn(
-              "shrink-0 cursor-pointer rounded-full px-2 py-0.5 text-[11px] font-medium hover:opacity-80",
-              active
-                ? "bg-emerald-50 text-emerald-700"
-                : "bg-zinc-200 text-zinc-500",
-            )}
-          >
-            {active ? t("active") : t("hidden")}
-          </button>
+          <ActiveToggleButton
+            active={active}
+            pending={togglingActive}
+            activeLabel={t("active")}
+            inactiveLabel={t("hidden")}
+            onClick={() => void toggleCategoryActive()}
+          />
         ) : null}
         <button
           type="button"
@@ -512,7 +638,7 @@ export function CategoryAccordion({
           <Plus className="size-4" />
         </Hint>
         <ActionMenu
-          label={t("actionsFor", { name: category.name })}
+          label={t("actionsFor", { name: shownName })}
           items={categoryActions()}
           onBlocked={changesEnabled ? undefined : onChangesBlocked}
         />
@@ -538,15 +664,27 @@ export function CategoryAccordion({
           <span className="flex shrink-0 items-center gap-1">
             <button
               type="button"
+              disabled={orderPending}
+              aria-busy={orderPending}
               onClick={() => setOrderConfirmOpen(true)}
-              className="rounded-lg bg-blue-600 px-2 py-1 text-xs font-medium text-white hover:bg-blue-700"
+              className={cn(
+                "inline-flex items-center gap-1 rounded-lg bg-blue-600 px-2 py-1 text-xs font-medium text-white",
+                orderPending ? "cursor-progress" : "hover:bg-blue-700",
+              )}
             >
+              {orderPending ? (
+                <span
+                  className="size-3 animate-spin rounded-full border border-current border-t-transparent"
+                  aria-hidden
+                />
+              ) : null}
               {t("save")}
             </button>
             <button
               type="button"
+              disabled={orderPending}
               onClick={() => setOrderDraft(null)}
-              className="rounded-lg border border-zinc-200 px-2 py-1 text-xs font-medium text-zinc-700 hover:bg-zinc-50"
+              className="rounded-lg border border-zinc-200 px-2 py-1 text-xs font-medium text-zinc-700 hover:bg-zinc-50 disabled:cursor-progress"
             >
               {t("cancel")}
             </button>
@@ -592,15 +730,27 @@ export function CategoryAccordion({
                     )}
                     strategy={verticalListSortingStrategy}
                   >
-                    <div className="space-y-1">
+                    <div
+                      className={cn(
+                        "relative space-y-1",
+                        orderPending && "pointer-events-none cursor-progress",
+                      )}
+                      aria-busy={orderPending}
+                    >
                       {shownSubcategories.map((subcategory) => (
-                        <SortableSubcategoryRow
+                        <DeletePendingFrame
                           key={subcategory.id}
+                          pending={
+                            deletePending?.kind === "subcategory" &&
+                            deletePending.id === subcategory.id
+                          }
+                        >
+                        <SortableSubcategoryRow
                           categoryId={category.id}
                           categoryName={category.name}
                           subcategory={subcategory}
                           categoryActive={active}
-                          icon={category.icon}
+                          icon={shownIcon}
                           showAiPlus={showSubcategoryAi}
                           aiRequest={aiRequest}
                           onAiPromptReady={onAiPromptReady}
@@ -609,6 +759,8 @@ export function CategoryAccordion({
                           onChangesBlocked={onChangesBlocked}
                           onToggleBlocked={onToggleBlocked}
                           onDeleteBlocked={onDeleteBlocked}
+                          loggedIn={loggedIn}
+                          query={query}
                           onRequestDelete={() =>
                             setPendingDelete({
                               id: subcategory.id,
@@ -617,19 +769,32 @@ export function CategoryAccordion({
                             })
                           }
                         />
+                        </DeletePendingFrame>
                       ))}
+                      {orderPending ? (
+                        <span
+                          className="category-shimmer pointer-events-none absolute inset-0 rounded-lg opacity-70"
+                          aria-hidden
+                        />
+                      ) : null}
                     </div>
                   </SortableContext>
                 </DndContext>
               ) : (
                 shownSubcategories.map((subcategory) => (
-                  <SubcategoryRow
+                  <DeletePendingFrame
                     key={subcategory.id}
+                    pending={
+                      deletePending?.kind === "subcategory" &&
+                      deletePending.id === subcategory.id
+                    }
+                  >
+                  <SubcategoryRow
                     categoryId={category.id}
                     categoryName={category.name}
                     subcategory={subcategory}
                     categoryActive={active}
-                    icon={category.icon}
+                    icon={shownIcon}
                     showAiPlus={showSubcategoryAi}
                     aiRequest={aiRequest}
                     onAiPromptReady={onAiPromptReady}
@@ -638,6 +803,8 @@ export function CategoryAccordion({
                     onChangesBlocked={onChangesBlocked}
                     onToggleBlocked={onToggleBlocked}
                     onDeleteBlocked={onDeleteBlocked}
+                    loggedIn={loggedIn}
+                    query={query}
                     onRequestDelete={() =>
                       setPendingDelete({
                         id: subcategory.id,
@@ -646,6 +813,7 @@ export function CategoryAccordion({
                       })
                     }
                   />
+                  </DeletePendingFrame>
                 ))
               )}
               {playbooks.length === 0 && shownSubcategories.length === 0 ? (
@@ -697,7 +865,7 @@ export function CategoryAccordion({
         tone="danger"
         onClose={() => setPendingDelete(null)}
         onConfirm={() => {
-          if (!pendingDelete) return;
+          if (!pendingDelete || deletePending) return;
           if (!canToggleActive) {
             onDeleteBlocked?.();
             setPendingDelete(null);
@@ -707,14 +875,22 @@ export function CategoryAccordion({
             onChangesBlocked?.();
             return;
           }
-          if (pendingDelete.kind === "subcategory") {
-            void logDeleteClickSubcategory(
-              pendingDelete.id,
-              pendingDelete.categoryId ?? "",
-            );
-            return;
-          }
-          void logDeleteClick(pendingDelete.id, deleteCategory);
+          const target = pendingDelete;
+          setDeletePending({ id: target.id, kind: target.kind });
+          void (async () => {
+            try {
+              if (target.kind === "subcategory") {
+                await logDeleteClickSubcategory(
+                  target.id,
+                  target.categoryId ?? "",
+                );
+                return;
+              }
+              await logDeleteClick(target.id, deleteCategory);
+            } finally {
+              setDeletePending(null);
+            }
+          })();
         }}
       />
       <ConfirmDialog
@@ -725,388 +901,37 @@ export function CategoryAccordion({
         onClose={() => setOrderConfirmOpen(false)}
         onConfirm={confirmSubcategoryOrder}
       />
+      {deletingCategory ? (
+        <span
+          className="category-shimmer pointer-events-none absolute inset-0 rounded-xl opacity-70"
+          aria-hidden
+        />
+      ) : null}
     </section>
   );
 }
 
-function SortableSubcategoryRow(
-  props: Omit<Parameters<typeof SubcategoryRow>[0], "dragHandle">,
-) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: `suborder:${props.subcategory.id}` });
-  return (
-    <div
-      ref={setNodeRef}
-      style={{ transform: CSS.Transform.toString(transform), transition }}
-    >
-      <SubcategoryRow
-        {...props}
-        dragHandle={{
-          attributes,
-          listeners,
-          isDragging,
-        }}
-      />
-    </div>
-  );
-}
-
-function SubcategoryRow({
-  categoryId,
-  categoryName,
-  subcategory,
-  categoryActive = true,
-  icon,
-  showAiPlus,
-  aiRequest,
-  onAiPromptReady,
-  canToggleActive,
-  changesEnabled = true,
-  onChangesBlocked,
-  onToggleBlocked,
-  onDeleteBlocked,
-  onValuesChange,
-  onRequestDelete,
-  dragHandle,
+function DeletePendingFrame({
+  pending,
+  children,
 }: {
-  categoryId: string;
-  categoryName: string;
-  subcategory: CategorySubcategory;
-  categoryActive?: boolean;
-  icon: Category["icon"];
-  showAiPlus: boolean;
-  aiRequest?: { id: string; token: number } | null;
-  onAiPromptReady?: (subcategoryId: string, aiPrompt: string) => void;
-  canToggleActive: boolean;
-  changesEnabled?: boolean;
-  onChangesBlocked?: () => void;
-  onToggleBlocked?: () => void;
-  onDeleteBlocked?: () => void;
-  dragHandle?: {
-    attributes: DraggableAttributes;
-    listeners?: Record<string, Function> | undefined;
-    isDragging: boolean;
-  };
-  onValuesChange?: (
-    subcategoryId: string,
-    values: { description: string; aiPrompt: string },
-  ) => void;
-  onRequestDelete: () => void;
+  pending: boolean;
+  children: ReactNode;
 }) {
-  const { setSubcategoryContent, setSubcategoryActive } = useWorkspace();
-  const { saveSubcategory } = useWorkspaceUi();
-  const t = useTranslations("Category");
-  const [editorOpen, setEditorOpen] = useState(false);
-  const [drafts, setDrafts] = useState<
-    Record<string, { description: string; aiPrompt: string }>
-  >({});
-  const openedRequest = useRef(0);
-  const formItems = subcategoryFormItems(subcategory);
-
-  function openEditor() {
-    setDrafts(
-      Object.fromEntries(
-        formItems.map((item) => [
-          item.id,
-          {
-            description: item.label,
-            aiPrompt: item.prompt,
-          },
-        ]),
-      ),
-    );
-    setEditorOpen(true);
-  }
-
-  function requestSubcategoryDelete() {
-    if (!canToggleActive) {
-      onDeleteBlocked?.();
-      return;
-    }
-    if (!changesEnabled) {
-      onChangesBlocked?.();
-      return;
-    }
-    onRequestDelete();
-  }
-
-  async function toggleSubcategoryActive() {
-    if (!changesEnabled) {
-      onChangesBlocked?.();
-      return;
-    }
-    if (!canToggleActive) {
-      onToggleBlocked?.();
-      return;
-    }
-    const token = localStorage.getItem("token");
-    if (!token) {
-      onToggleBlocked?.();
-      return;
-    }
-    const res = await fetch(`${backendUrl}/category/toggle-subcategory`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ subcategoryId: subcategory.id }),
-    });
-    const data = await res.json();
-    if (res.ok) {
-      setSubcategoryActive(
-        categoryId,
-        subcategory.id,
-        typeof data.active === "boolean" ? data.active : !subcategory.active,
-      );
-      refreshDisplayedCategories();
-    }
-  }
-
-  function writeDraft(
-    itemId: string,
-    patch: { description?: string; aiPrompt?: string },
-  ) {
-    const next = {
-      ...drafts,
-      [itemId]: {
-        description: drafts[itemId]?.description ?? "",
-        aiPrompt: drafts[itemId]?.aiPrompt ?? "",
-        ...patch,
-      },
-    };
-    setDrafts(next);
-    const firstId = formItems[0]?.id ?? itemId;
-    onValuesChange?.(subcategory.id, {
-      description: next[firstId]?.description ?? "",
-      aiPrompt: next[firstId]?.aiPrompt ?? "",
-    });
-  }
-
-  useEffect(() => {
-    if (!showAiPlus || !aiRequest || aiRequest.id !== subcategory.id) return;
-    if (aiRequest.token === openedRequest.current) return;
-    openedRequest.current = aiRequest.token;
-    const item = formItems[0];
-    setDrafts(
-      item
-        ? {
-            [item.id]: {
-              description: item.label,
-              aiPrompt: item.prompt,
-            },
-          }
-        : {},
-    );
-    setEditorOpen(true);
-  }, [aiRequest, showAiPlus, subcategory.id]);
-
   return (
     <div
-      className={cn(
-        "flex items-center gap-2 rounded-lg border border-transparent px-2 py-1.5 transition-[box-shadow,border-color,background-color] duration-150",
-        subcategory.active && categoryActive
-          ? "bg-white text-zinc-900 hover:border-zinc-200 hover:shadow-[0_1px_2px_rgba(16,24,40,0.04),0_6px_16px_-12px_rgba(16,24,40,0.35)]"
-          : "bg-zinc-50 text-zinc-400",
-        dragHandle?.isDragging &&
-          "relative z-10 border-zinc-200 bg-white shadow-lg",
-      )}
+      className={cn("relative", pending && "pointer-events-none cursor-progress")}
+      aria-busy={pending}
     >
-      {dragHandle ? (
-        <button
-          type="button"
-          aria-label={t("reorder")}
-          className="flex size-7 shrink-0 cursor-grab items-center justify-center rounded-md text-zinc-500 hover:bg-zinc-100 active:cursor-grabbing"
-          {...dragHandle.attributes}
-          {...dragHandle.listeners}
-        >
-          <GripDots />
-        </button>
-      ) : (
-        <span className="flex size-7 shrink-0 items-center justify-center text-zinc-400">
-          <GripDots />
-        </span>
-      )}
-      <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-zinc-50 text-zinc-500">
-        <WorkspaceIcon name={icon} className="size-3.5" />
-      </span>
-      <button
-        type="button"
-        disabled={!subcategory.active || !categoryActive}
-        onClick={openEditor}
-        className={cn(
-          "min-w-0 flex-1 truncate text-start text-sm font-medium",
-          subcategory.active && categoryActive
-            ? "text-zinc-900"
-            : "cursor-default text-zinc-400",
-        )}
-      >
-        {subcategory.name}
-      </button>
-      <button
-        type="button"
-        onClick={toggleSubcategoryActive}
-        className={cn(
-          "pointer-events-auto shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium",
-          canToggleActive &&
-            categoryActive &&
-            "cursor-pointer hover:opacity-80",
-          !categoryActive
-            ? "bg-zinc-200 text-zinc-400"
-            : subcategory.active
-              ? "bg-emerald-50 text-emerald-700"
-              : "bg-zinc-200 text-zinc-500",
-        )}
-      >
-        {subcategory.active ? t("active") : t("hidden")}
-      </button>
-      <button
-        type="button"
-        aria-label={t("deleteSubcategory")}
-        onClick={requestSubcategoryDelete}
-        className="flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-zinc-400 hover:bg-red-50 hover:text-red-600"
-      >
-        <Trash2 className="size-3.5" />
-      </button>
-      {showAiPlus ? (
-        <button
-          type="button"
-          aria-label={t("aiText")}
-          onClick={openEditor}
-          className="flex size-7 shrink-0 items-center justify-center rounded-md text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700"
-        >
-          <Plus className="size-3.5" />
-        </button>
-      ) : null}
-      {editorOpen ? (
-        <Dialog.Root
-          open={editorOpen}
-          onOpenChange={(next) => {
-            if (!next) setEditorOpen(false);
-          }}
-        >
-          <Dialog.Portal>
-            <Dialog.Backdrop className="fixed inset-0 z-[80] bg-zinc-950/25" />
-            <Dialog.Popup className="fixed top-1/2 left-1/2 z-[80] max-h-[min(100%-2rem,640px)] w-[min(100%-2rem,420px)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl border border-zinc-200 bg-white p-5 shadow-xl outline-none">
-              <Dialog.Title className="text-sm font-semibold text-zinc-950">
-                {subcategory.name}
-              </Dialog.Title>
-              <Dialog.Description className="mt-1 text-xs text-zinc-500">
-                {categoryName}
-              </Dialog.Description>
-              <div className="mt-4 space-y-4">
-                {formItems.map((item) => (
-                  <div key={item.id} className="space-y-3">
-                    <label className="block space-y-1.5">
-                      <span className="text-xs font-medium text-zinc-700">
-                        {t("internalDescription")}
-                      </span>
-                      <textarea
-                        value={drafts[item.id]?.description ?? ""}
-                        onChange={(event) =>
-                          writeDraft(item.id, {
-                            description: event.target.value,
-                          })
-                        }
-                        placeholder={item.label || t("savedForSubcategory")}
-                        readOnly={!changesEnabled}
-                        rows={3}
-                        className="w-full resize-y rounded-lg border border-zinc-200 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-3 focus:ring-blue-500/15"
-                      />
-                    </label>
-                    <label className="block space-y-1.5">
-                      <span className="text-xs font-medium text-zinc-700">
-                        {t("aiPrompt")}
-                      </span>
-                      <textarea
-                        value={drafts[item.id]?.aiPrompt ?? ""}
-                        onChange={(event) =>
-                          writeDraft(item.id, { aiPrompt: event.target.value })
-                        }
-                        placeholder={item.prompt || t("savedForSubcategory")}
-                        readOnly={!changesEnabled}
-                        rows={6}
-                        className="w-full resize-y rounded-lg border border-zinc-200 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-3 focus:ring-blue-500/15"
-                      />
-                    </label>
-                  </div>
-                ))}
-              </div>
-              <div className="mt-4 flex justify-end gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setEditorOpen(false)}
-                >
-                  {t("cancel")}
-                </Button>
-                <Button
-                  type="button"
-                  onClick={() => {
-                    if (!changesEnabled) {
-                      onChangesBlocked?.();
-                      return;
-                    }
-                    const first = formItems[0];
-                    const description =
-                      drafts[first?.id ?? ""]?.description ?? "";
-                    const aiPrompt = drafts[first?.id ?? ""]?.aiPrompt ?? "";
-                    const openedForContinue = aiRequest?.id === subcategory.id;
-                    if (openedForContinue && !aiPrompt.trim()) {
-                      onAiPromptReady?.(subcategory.id, aiPrompt);
-                      return;
-                    }
-                    setSubcategoryContent(categoryId, subcategory.id, {
-                      description,
-                      aiPrompt,
-                    });
-                    saveSubcategory({
-                      name: subcategory.name,
-                      description,
-                      prompt: aiPrompt,
-                      icon,
-                      active: subcategory.active,
-                      autoSend: false,
-                      attachments: [],
-                      categoryId,
-                    });
-                    setEditorOpen(false);
-                    if (openedForContinue)
-                      onAiPromptReady?.(subcategory.id, aiPrompt);
-                  }}
-                >
-                  {t("save")}
-                </Button>
-              </div>
-            </Dialog.Popup>
-          </Dialog.Portal>
-        </Dialog.Root>
+      {children}
+      {pending ? (
+        <span
+          className="category-shimmer pointer-events-none absolute inset-0 rounded-lg opacity-70"
+          aria-hidden
+        />
       ) : null}
     </div>
   );
-}
-
-function subcategoryFormItems(subcategory: CategorySubcategory) {
-  const items = (subcategory.items ?? []).filter(
-    (item, index, all) =>
-      all.findIndex(
-        (other) => other.label === item.label && other.prompt === item.prompt,
-      ) === index,
-  );
-  if (items.length > 0) return items;
-  return [
-    {
-      id: subcategory.id,
-      label: subcategory.description || "",
-      prompt: subcategory.aiPrompt || "",
-    },
-  ];
 }
 
 function EmptyCategory({ categoryId }: { categoryId: string }) {

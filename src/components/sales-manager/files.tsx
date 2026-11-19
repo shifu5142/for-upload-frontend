@@ -67,36 +67,20 @@ export function isFetchedAttachment(value: unknown): value is FetchedAttachment 
   );
 }
 
-const SKELETON_ROW_INDEXES = [0, 1, 2, 3];
-const SKELETON_BAR_BASE_WIDTH_PERCENT = 46;
-const SKELETON_BAR_WIDTH_STEP_PERCENT = 10;
-const SKELETON_ROW_DELAY_MS = 120;
-
 export function FilesSkeleton() {
   const t = useTranslations("Sales");
   return (
     <div
-      className="space-y-2"
+      className="flex items-center justify-center py-10"
       role="status"
       aria-live="polite"
       aria-busy="true"
     >
       <p className="sr-only">{t("loadingFiles")}</p>
-      {SKELETON_ROW_INDEXES.map((row) => (
-        <div
-          key={row}
-          className="flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-3 py-3"
-        >
-          <span className="category-shimmer size-8 shrink-0 rounded-md" />
-          <span
-            className="category-shimmer h-3.5 rounded-md"
-            style={{
-              width: `${SKELETON_BAR_BASE_WIDTH_PERCENT + row * SKELETON_BAR_WIDTH_STEP_PERCENT}%`,
-              animationDelay: `${row * SKELETON_ROW_DELAY_MS}ms`,
-            }}
-          />
-        </div>
-      ))}
+      <span
+        className="size-5 animate-spin rounded-full border-2 border-zinc-300 border-t-zinc-800"
+        aria-hidden
+      />
     </div>
   );
 }
@@ -141,6 +125,23 @@ export function fileSections(files: FetchedAttachment[]) {
   const groups = filesGroupedByPlaybook(files);
   if (groups.size === 0) return [["", [] as FetchedAttachment[]]] as [string, FetchedAttachment[]][];
   return [...groups];
+}
+
+export function subcategoryPlaybookIds(subcategory: {
+  id: string;
+  playbookIds?: string[];
+}) {
+  if (subcategory.playbookIds && subcategory.playbookIds.length > 0) {
+    return subcategory.playbookIds;
+  }
+  return subcategory.playbookIds ? [] : [subcategory.id];
+}
+
+export function filesForSubcategory(
+  groups: Map<string, FetchedAttachment[]>,
+  playbookIds: string[],
+) {
+  return playbookIds.flatMap((id) => groups.get(id) ?? []);
 }
 
 export async function fetchFiles(

@@ -1,5 +1,5 @@
-import { WorkspaceScreen } from "@/components/admin/WorkspaceScreen";
+import { HomeLanding } from "@/components/home/HomeLanding";
 
 export default function HomePage() {
-  return <WorkspaceScreen />;
+  return <HomeLanding />;
 }

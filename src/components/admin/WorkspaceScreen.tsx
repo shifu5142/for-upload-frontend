@@ -475,14 +475,8 @@ function WorkspaceShell() {
         <TopToolbar
           query={query}
           onQueryChange={setQuery}
-          changeCount={workspace.changeCount}
           onCreatePlaybook={() => openCreate()}
           canCreate={canEdit}
-          canPublish={canEdit}
-          onPublish={() => {
-            if (!canEdit || workspace.changeCount === 0) return;
-            setPublishOpen(true);
-          }}
           onOpenPreview={() => setPreviewOpen(true)}
           greeting={greeting}
         />
@@ -495,7 +489,10 @@ function WorkspaceShell() {
             {searching ? (
               <p className="mb-3 text-sm text-zinc-500">
                 {groups.reduce(
-                  (sum, group) => sum + group.playbooks.length,
+                  (sum, group) =>
+                    sum +
+                    group.playbooks.length +
+                    (group.category.subcategories?.length ?? 0),
                   0,
                 ) === 0
                   ? copy("noResults", { query: query.trim() })
@@ -555,6 +552,7 @@ function WorkspaceShell() {
                         canToggleActive={canEdit}
                         onToggleBlocked={showAdminNotice}
                         onDeleteBlocked={showDeleteNotice}
+                        loggedIn={isAuthenticated === true}
                         onEditPlaybook={editPlaybook}
                         onCreatePlaybook={() => openCreate(group.category.id)}
                         onDeletePlaybook={(playbook) =>
@@ -712,6 +710,9 @@ function filterGroups(
         if (!playbook) return false;
         return showInactive || playbook.active;
       });
+    const subcategories = (category.subcategories ?? []).filter(
+      (subcategory) => showInactive || subcategory.active,
+    );
     if (!needle) return [{ category, playbooks: items }];
     if (category.name.toLocaleLowerCase("he").includes(needle))
       return [{ category, playbooks: items }];
@@ -720,7 +721,18 @@ function filterGroups(
         playbook.name.toLocaleLowerCase("he").includes(needle) ||
         playbook.description.toLocaleLowerCase("he").includes(needle),
     );
-    return matched.length > 0 ? [{ category, playbooks: matched }] : [];
+    const matchedSubcategories = subcategories.filter(
+      (subcategory) =>
+        subcategory.name.toLocaleLowerCase("he").includes(needle) ||
+        subcategory.description.toLocaleLowerCase("he").includes(needle),
+    );
+    if (matched.length === 0 && matchedSubcategories.length === 0) return [];
+    return [
+      {
+        category: { ...category, subcategories: matchedSubcategories },
+        playbooks: matched,
+      },
+    ];
   });
 }
 

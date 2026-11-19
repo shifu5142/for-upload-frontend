@@ -1,6 +1,6 @@
 "use client";
 
-import { type MouseEvent, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Toast } from "@/components/admin/Toast";
 import { CategoriesPanel } from "@/components/sales-manager/CategoriesPanel";
@@ -83,13 +83,6 @@ function withWorkspaceAdditions(
   return [...merged, ...additions.values()];
 }
 
-function isFormControl(target: EventTarget | null) {
-  return (
-    target instanceof Element &&
-    Boolean(target.closest("button, a, input, textarea, select, label"))
-  );
-}
-
 function SalesManagerShell({ categories }: { categories: Category[] }) {
   const sales = useSalesManager();
   const workspace = useWorkspace();
@@ -116,7 +109,6 @@ function SalesManagerShell({ categories }: { categories: Category[] }) {
   if (!sales.ready) return null;
 
   const tabIndex = TABS.findIndex((item) => item.id === tab);
-  const nextTab = TABS[tabIndex + 1];
 
   function showAiNotice() {
     setNotice(t("aiRequired"));
@@ -143,12 +135,6 @@ function SalesManagerShell({ categories }: { categories: Category[] }) {
     setTab(target);
   }
 
-  function openNextDiv(event: MouseEvent<HTMLDivElement>) {
-    if (tab === "categories") return;
-    if (!nextTab || isFormControl(event.target)) return;
-    goToTab(nextTab.id);
-  }
-
   function continueAfterPrompt(subcategoryId: string, aiPrompt: string) {
     const missing = missingAiPrompt(managedCategories, {
       id: subcategoryId,
@@ -161,7 +147,6 @@ function SalesManagerShell({ categories }: { categories: Category[] }) {
     }
     setTab("files");
   }
-  console.log("SalesManager is working");
 
   return (
     <SalesNavProvider openTab={goToTab}>
@@ -191,13 +176,7 @@ function SalesManagerShell({ categories }: { categories: Category[] }) {
             ))}
           </nav>
         </div>
-        <div
-          className={cn(
-            "admin-scroll max-h-[70vh] overflow-y-auto p-4",
-            nextTab && tab !== "categories" && "cursor-pointer",
-          )}
-          onClick={openNextDiv}
-        >
+        <div className="admin-scroll max-h-[70vh] overflow-y-auto p-4">
           {tab === "categories" ? <CategoriesPanel /> : null}
           {tab === "playbooks" ? (
             <PlaybooksPanel

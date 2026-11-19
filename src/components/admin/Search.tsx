@@ -28,11 +28,23 @@ export function HighlightText({ text, query }: { text: string; query: string }) 
   return nodes;
 }
 
-export function Search({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+export function Search({
+  value,
+  onChange,
+  label,
+  placeholder,
+  className,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  label?: string;
+  placeholder?: string;
+  className?: string;
+}) {
   const t = useTranslations("Search");
   return (
-    <label className="relative block w-full min-w-0 sm:w-64">
-      <span className="sr-only">{t("label")}</span>
+    <label className={`relative block w-full min-w-0 ${className ?? "sm:w-64"}`}>
+      <span className="sr-only">{label ?? t("label")}</span>
       <svg
         viewBox="0 0 24 24"
         className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-zinc-400"
@@ -47,7 +59,7 @@ export function Search({ value, onChange }: { value: string; onChange: (value: s
       <input
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        placeholder={t("placeholder")}
+        placeholder={placeholder ?? t("placeholder")}
         maxLength={80}
         className="h-9 w-full rounded-lg border border-zinc-200 bg-zinc-50 ps-9 pe-8 text-sm text-zinc-900 outline-none transition-colors placeholder:text-zinc-400 focus:border-blue-500 focus:bg-white focus:ring-3 focus:ring-blue-500/15"
       />

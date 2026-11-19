@@ -45,6 +45,19 @@ function nestedPlaybook(row: Record<string, unknown>) {
   return playbooks[0] ?? null;
 }
 
+function relatedPlaybookIds(row: Record<string, unknown>) {
+  const nested = childRows(row.playbooks)
+    .sort(byBackendPosition)
+    .flatMap((playbook) =>
+      typeof playbook.id === "string" ? [playbook.id] : [],
+    );
+  if (nested.length > 0) return nested;
+  if (typeof row.id === "string" && typeof row.category_id === "string") {
+    return [row.id];
+  }
+  return [];
+}
+
 function mapBackendChild(
   row: Record<string, unknown>,
 ): CategorySubcategory | null {
@@ -89,6 +102,7 @@ function mapBackendChild(
       "",
     active: row.active !== false,
     items,
+    playbookIds: relatedPlaybookIds(row),
   };
 }
 

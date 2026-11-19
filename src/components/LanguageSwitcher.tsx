@@ -32,7 +32,12 @@ export function LanguageSwitcher() {
         {direction === "RTL" ? t("buttonRtl") : t("buttonLtr")}
       </Popover.Trigger>
       <Popover.Portal>
-        <Popover.Positioner side="bottom" align="end" sideOffset={6} className="z-[90]">
+        <Popover.Positioner
+          side="bottom"
+          align="end"
+          sideOffset={6}
+          className="z-[90]"
+        >
           <Popover.Popup className="min-w-44 rounded-xl border border-zinc-200 bg-white p-1 shadow-lg outline-none">
             {OPTIONS.map((option) => {
               const selected = option.locale === locale;
@@ -43,7 +48,9 @@ export function LanguageSwitcher() {
                   onClick={() => selectLocale(option.locale)}
                   className={cn(
                     "flex w-full cursor-pointer items-center rounded-lg px-2.5 py-2 text-start text-sm outline-none hover:bg-zinc-100",
-                    selected ? "bg-zinc-100 font-semibold text-zinc-950" : "text-zinc-700",
+                    selected
+                      ? "bg-zinc-100 font-semibold text-zinc-950"
+                      : "text-zinc-700",
                   )}
                   aria-current={selected ? "true" : undefined}
                 >
