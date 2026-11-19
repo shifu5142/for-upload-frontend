@@ -1,3 +1,4 @@
+import "@/lib/kinde-site-url";
 import { handleAuth } from "@kinde-oss/kinde-auth-nextjs/server";
 
 const auth = handleAuth();
