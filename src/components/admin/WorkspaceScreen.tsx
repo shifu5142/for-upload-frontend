@@ -28,14 +28,8 @@ import { PlaybookDragPreview } from "@/components/admin/PlaybookRow";
 import { PublishModal } from "@/components/admin/PublishModal";
 import { Toast } from "@/components/admin/Toast";
 import { TopToolbar } from "@/components/admin/TopToolbar";
-import {
-  EmptyActions,
-  EmptyCategories,
-} from "@/components/admin/WorkspaceEmpty";
-import {
-  PreviewDialog,
-  WorkspacePreviewAside,
-} from "@/components/admin/WorkspacePreview";
+import { EmptyActions, EmptyCategories } from "@/components/admin/WorkspaceEmpty";
+import { PreviewDialog, WorkspacePreviewAside } from "@/components/admin/WorkspacePreview";
 import {
   bindCategoryListRefresh,
   refreshDisplayedCategories,
@@ -130,9 +124,9 @@ function WorkspaceShell() {
   const [dragId, setDragId] = useState<string | null>(null);
   const [canEdit, setCanEdit] = useState(false);
   const [fetchedCategories, setFetchedCategories] = useState<unknown[]>([]);
-  const [categoriesStatus, setCategoriesStatus] = useState<
-    "loading" | "ready" | "error"
-  >("loading");
+  const [categoriesStatus, setCategoriesStatus] = useState<"loading" | "ready" | "error">(
+    "loading",
+  );
   const [adminNotice, setAdminNotice] = useState<string | null>(null);
   const adminNoticeTimer = useRef<number | null>(null);
   const categoriesRef = useRef(workspace.categories);
@@ -141,8 +135,7 @@ function WorkspaceShell() {
   const orderBeforeRef = useRef("");
   const movedAcrossRef = useRef(false);
   categoriesRef.current = workspace.categories;
-  const { user, isAuthenticated, isLoading, getAccessTokenRaw } =
-    useKindeBrowserClient();
+  const { user, isAuthenticated, isLoading, getAccessTokenRaw } = useKindeBrowserClient();
   const getAccessTokenRawRef = useRef(getAccessTokenRaw);
   getAccessTokenRawRef.current = getAccessTokenRaw;
 
@@ -157,9 +150,7 @@ function WorkspaceShell() {
     let unbindRefresh = () => {};
 
     async function run() {
-      const token = isAuthenticated
-        ? await getAccessTokenRawRef.current()
-        : null;
+      const token = isAuthenticated ? await getAccessTokenRawRef.current() : null;
       if (cancelled) return;
       if (isAuthenticated && !token) return;
 
@@ -174,12 +165,13 @@ function WorkspaceShell() {
               : { "Content-Type": "application/json" },
             method: "GET",
           });
-          const data = await response.json();
+          const body = await response.text();
           if (cancelled) return;
-          if (!response.ok) {
+          if (!response.ok || body.trimStart().startsWith("<")) {
             setCategoriesStatus("error");
             return;
           }
+          const data = JSON.parse(body) as unknown;
           loadedCategoriesFor.current = userId;
           setFetchedCategories(Array.isArray(data) ? data : []);
           setCategoriesStatus("ready");
@@ -194,18 +186,23 @@ function WorkspaceShell() {
       if (loadedCategoriesFor.current !== userId) void fetchCategories();
 
       if (isAuthenticated && token) {
-        const response = await fetch(`${backendUrl}/auth/token-data`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          method: "GET",
-        });
-        if (!response.ok || cancelled) return;
-        const data = await response.json();
-        if (cancelled) return;
-        localStorage.setItem("token", token);
-        setCanEdit(isAdminUser(data));
+        try {
+          const response = await fetch(`${backendUrl}/auth/token-data`, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+            method: "GET",
+          });
+          if (!response.ok || cancelled) return;
+          const body = await response.text();
+          if (cancelled || body.trimStart().startsWith("<")) return;
+          const data = JSON.parse(body) as { user?: unknown };
+          localStorage.setItem("token", token);
+          setCanEdit(isAdminUser(data));
+        } catch {
+          if (!cancelled) setCanEdit(false);
+        }
       }
     }
 
@@ -218,19 +215,13 @@ function WorkspaceShell() {
   function showAdminNotice() {
     setAdminNotice("adminOnly");
     if (adminNoticeTimer.current) window.clearTimeout(adminNoticeTimer.current);
-    adminNoticeTimer.current = window.setTimeout(
-      () => setAdminNotice(null),
-      1500,
-    );
+    adminNoticeTimer.current = window.setTimeout(() => setAdminNotice(null), 1500);
   }
 
   function showDeleteNotice() {
     setAdminNotice("adminDeleteOnly");
     if (adminNoticeTimer.current) window.clearTimeout(adminNoticeTimer.current);
-    adminNoticeTimer.current = window.setTimeout(
-      () => setAdminNotice(null),
-      1500,
-    );
+    adminNoticeTimer.current = window.setTimeout(() => setAdminNotice(null), 1500);
   }
 
   function editPlaybook(id: string) {
@@ -242,9 +233,7 @@ function WorkspaceShell() {
     setEditorOpen(true);
   }
 
-  const greeting = user?.given_name
-    ? header("hello", { name: user.given_name })
-    : null;
+  const greeting = user?.given_name ? header("hello", { name: user.given_name }) : null;
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(KeyboardSensor, {
@@ -305,12 +294,8 @@ function WorkspaceShell() {
       const overIndex = target.playbookIds.indexOf(stripId(overId));
       const activeTop = event.active.rect.current.translated?.top;
       const isBelow =
-        activeTop != null &&
-        activeTop > event.over.rect.top + event.over.rect.height / 2;
-      index =
-        overIndex < 0
-          ? target.playbookIds.length
-          : overIndex + (isBelow ? 1 : 0);
+        activeTop != null && activeTop > event.over.rect.top + event.over.rect.height / 2;
+      index = overIndex < 0 ? target.playbookIds.length : overIndex + (isBelow ? 1 : 0);
     }
 
     const next = movePlaybook(categoriesRef.current, playbookId, to, index);
@@ -343,21 +328,13 @@ function WorkspaceShell() {
     }
 
     if (activeId.startsWith("category:") && overId.startsWith("category:")) {
-      next = reorderCategories(
-        categoriesRef.current,
-        stripId(activeId),
-        stripId(overId),
-      );
+      next = reorderCategories(categoriesRef.current, stripId(activeId), stripId(overId));
     } else if (
       activeId.startsWith("playbook:") &&
       !movedAcrossRef.current &&
       overId.startsWith("playbook:")
     ) {
-      next = reorderPlaybookInCategory(
-        categoriesRef.current,
-        stripId(activeId),
-        stripId(overId),
-      );
+      next = reorderPlaybookInCategory(categoriesRef.current, stripId(activeId), stripId(overId));
     }
 
     categoriesRef.current = next;
@@ -378,8 +355,7 @@ function WorkspaceShell() {
   async function saveEditor(draft: PlaybookDraft) {
     const token = await getAccessTokenRaw();
     if (!token) return;
-    if (editor?.mode === "edit")
-      workspace.savePlaybook(draft, editor.playbookId);
+    if (editor?.mode === "edit") workspace.savePlaybook(draft, editor.playbookId);
     else workspace.savePlaybook(draft);
     const response = await fetch(`${backendUrl}/category/updatesubcategory`, {
       method: "POST",
@@ -405,16 +381,10 @@ function WorkspaceShell() {
     if (subcategory) {
       const selectedName =
         displayCategories.find((item) => item.id === draft.categoryId)?.name ??
-        workspace.categories.find((item) => item.id === draft.categoryId)
-          ?.name ??
+        workspace.categories.find((item) => item.id === draft.categoryId)?.name ??
         "";
       setFetchedCategories((current) =>
-        addSubcategoryToCategory(
-          current,
-          draft.categoryId,
-          selectedName,
-          subcategory,
-        ),
+        addSubcategoryToCategory(current, draft.categoryId, selectedName, subcategory),
       );
       workspace.expand(draft.categoryId);
     }
@@ -424,14 +394,11 @@ function WorkspaceShell() {
   }
 
   const editingPlaybook =
-    editor?.mode === "edit"
-      ? (workspace.playbooks[editor.playbookId] ?? null)
-      : null;
+    editor?.mode === "edit" ? (workspace.playbooks[editor.playbookId] ?? null) : null;
   const editingCategoryId =
     editor?.mode === "edit"
-      ? (workspace.categories.find((category) =>
-          category.playbookIds.includes(editor.playbookId),
-        )?.id ??
+      ? (workspace.categories.find((category) => category.playbookIds.includes(editor.playbookId))
+          ?.id ??
         workspace.categories[0]?.id ??
         "")
       : (editor?.categoryId ?? "");
@@ -467,8 +434,7 @@ function WorkspaceShell() {
         openCreatePlaybook: openCreate,
         editPlaybook,
         saveSubcategory: saveEditor,
-        getAccessToken: async () =>
-          (await getAccessTokenRawRef.current()) ?? null,
+        getAccessToken: async () => (await getAccessTokenRawRef.current()) ?? null,
       }}
     >
       <div className="flex h-dvh flex-col overflow-hidden bg-[#f5f5f6] text-zinc-900">
@@ -490,9 +456,7 @@ function WorkspaceShell() {
               <p className="mb-3 text-sm text-zinc-500">
                 {groups.reduce(
                   (sum, group) =>
-                    sum +
-                    group.playbooks.length +
-                    (group.category.subcategories?.length ?? 0),
+                    sum + group.playbooks.length + (group.category.subcategories?.length ?? 0),
                   0,
                 ) === 0
                   ? copy("noResults", { query: query.trim() })
@@ -500,8 +464,7 @@ function WorkspaceShell() {
               </p>
             ) : null}
 
-            {categoriesStatus === "loading" &&
-            displayCategories.length === 0 ? (
+            {categoriesStatus === "loading" && displayCategories.length === 0 ? (
               <CategoryListSkeleton label={copy("loadingCategories")} />
             ) : displayCategories.length === 0 ? (
               <EmptyCategories
@@ -534,9 +497,7 @@ function WorkspaceShell() {
                 }}
               >
                 <SortableContext
-                  items={groups.map((group) =>
-                    categoryDragId(group.category.id),
-                  )}
+                  items={groups.map((group) => categoryDragId(group.category.id))}
                   strategy={verticalListSortingStrategy}
                 >
                   <div className="space-y-3 pb-10">
@@ -565,10 +526,7 @@ function WorkspaceShell() {
                             tone: "danger",
                             action: () => {
                               workspace.deletePlaybook(playbook.id);
-                              if (
-                                editor?.mode === "edit" &&
-                                editor.playbookId === playbook.id
-                              ) {
+                              if (editor?.mode === "edit" && editor.playbookId === playbook.id) {
                                 setEditorOpen(false);
                               }
                             },
@@ -588,8 +546,7 @@ function WorkspaceShell() {
                                   }),
                             confirmLabel: dialogs("deleteCategoryConfirm"),
                             tone: "danger",
-                            action: () =>
-                              workspace.deleteCategory(group.category.id),
+                            action: () => workspace.deleteCategory(group.category.id),
                           })
                         }
                       />
@@ -597,18 +554,11 @@ function WorkspaceShell() {
                   </div>
                 </SortableContext>
                 <DragOverlay>
-                  {overlayPlaybook ? (
-                    <PlaybookDragPreview playbook={overlayPlaybook} />
-                  ) : null}
+                  {overlayPlaybook ? <PlaybookDragPreview playbook={overlayPlaybook} /> : null}
                   {overlayCategory ? (
                     <div className="flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-3 py-3 shadow-xl">
-                      <WorkspaceIcon
-                        name={overlayCategory.icon}
-                        className="size-4 text-zinc-500"
-                      />
-                      <span className="text-sm font-semibold">
-                        {overlayCategory.name}
-                      </span>
+                      <WorkspaceIcon name={overlayCategory.icon} className="size-4 text-zinc-500" />
+                      <span className="text-sm font-semibold">{overlayCategory.name}</span>
                     </div>
                   ) : null}
                 </DragOverlay>
@@ -667,16 +617,10 @@ function WorkspaceShell() {
           showInactive={canEdit}
         />
         {adminNotice ? (
-          <Toast
-            message={toastText(toasts, adminNotice)}
-            onDismiss={() => setAdminNotice(null)}
-          />
+          <Toast message={toastText(toasts, adminNotice)} onDismiss={() => setAdminNotice(null)} />
         ) : null}
         {workspace.toast ? (
-          <Toast
-            message={toastText(toasts, workspace.toast)}
-            onDismiss={workspace.dismissToast}
-          />
+          <Toast message={toastText(toasts, workspace.toast)} onDismiss={workspace.dismissToast} />
         ) : null}
         <SubcategoryDeleteNotice />
       </div>
@@ -738,12 +682,7 @@ function filterGroups(
 
 function CategoryListSkeleton({ label }: { label: string }) {
   return (
-    <div
-      className="space-y-3 pb-10"
-      role="status"
-      aria-live="polite"
-      aria-busy="true"
-    >
+    <div className="space-y-3 pb-10" role="status" aria-live="polite" aria-busy="true">
       <p className="sr-only">{label}</p>
       {[0, 1, 2, 3].map((card) => (
         <div
