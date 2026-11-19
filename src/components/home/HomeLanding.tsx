@@ -2,9 +2,9 @@
 
 import { Eye, MessageSquare, Send, Sparkles } from "lucide-react";
 import Image from "next/image";
-import { LoginLink } from "@kinde-oss/kinde-auth-nextjs/components";
 import { useLocale } from "next-intl";
 import { ExtensionDemo } from "@/components/home/ExtensionDemo";
+import { KindeLoginButton } from "@/components/KindeLoginButton";
 
 const COPY = {
   he: {
@@ -88,9 +88,9 @@ export function HomeLanding() {
           />
           <span className="text-sm font-semibold">shirSales</span>
         </div>
-        <LoginLink className="rounded-lg bg-[#2563eb] px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700">
+        <KindeLoginButton className="rounded-lg bg-[#2563eb] px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700">
           {text.open}
-        </LoginLink>
+        </KindeLoginButton>
       </div>
 
       <main>
@@ -100,9 +100,7 @@ export function HomeLanding() {
             <h1 className="mt-3 text-4xl font-semibold tracking-tight text-balance sm:text-5xl">
               {text.title}
             </h1>
-            <p className="mt-4 max-w-xl text-base leading-7 text-zinc-600">
-              {text.body}
-            </p>
+            <p className="mt-4 max-w-xl text-base leading-7 text-zinc-600">{text.body}</p>
           </div>
           <div>
             <p className="mb-3 text-xs font-medium tracking-wide text-zinc-500">
@@ -114,12 +112,8 @@ export function HomeLanding() {
 
         <section className="border-t border-zinc-200 bg-white">
           <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
-            <h2 className="text-2xl font-semibold tracking-tight">
-              {text.featuresTitle}
-            </h2>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-600">
-              {text.featuresBody}
-            </p>
+            <h2 className="text-2xl font-semibold tracking-tight">{text.featuresTitle}</h2>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-600">{text.featuresBody}</p>
             <div className="mt-8 grid gap-4 sm:grid-cols-2">
               {text.features.map((feature) => {
                 const Icon = feature.icon;
@@ -132,9 +126,7 @@ export function HomeLanding() {
                       <Icon className="size-4" aria-hidden />
                     </span>
                     <h3 className="mt-4 text-base font-semibold">{feature.title}</h3>
-                    <p className="mt-2 text-sm leading-6 text-zinc-600">
-                      {feature.body}
-                    </p>
+                    <p className="mt-2 text-sm leading-6 text-zinc-600">{feature.body}</p>
                   </article>
                 );
               })}

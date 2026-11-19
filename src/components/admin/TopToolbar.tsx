@@ -1,11 +1,12 @@
 "use client";
 
 import { Popover } from "@base-ui/react/popover";
-import { LoginLink, LogoutLink } from "@kinde-oss/kinde-auth-nextjs/components";
+import { LogoutLink } from "@kinde-oss/kinde-auth-nextjs/components";
 import { Plus, User } from "lucide-react";
-import { useTranslations } from "next-intl";
 import Image from "next/image";
+import { useTranslations } from "next-intl";
 import { Search } from "@/components/admin/Search";
+import { KindeLoginButton } from "@/components/KindeLoginButton";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { Button, buttonVariants } from "@/components/ui/button";
 
@@ -40,20 +41,13 @@ export function TopToolbar({
           <span className="truncate text-[15px] font-semibold tracking-tight text-zinc-950">
             shirSales
           </span>
-          <h1 className="truncate text-sm font-medium text-zinc-500">
-            {t("product")}
-          </h1>
+          <h1 className="truncate text-sm font-medium text-zinc-500">{t("product")}</h1>
         </div>
       </div>
 
       <div className="ms-auto flex w-full flex-wrap items-center justify-end gap-2 lg:w-auto">
         <Search value={query} onChange={onQueryChange} />
-        <Button
-          type="button"
-          variant="outline"
-          className="xl:hidden"
-          onClick={onOpenPreview}
-        >
+        <Button type="button" variant="outline" className="xl:hidden" onClick={onOpenPreview}>
           {t("preview")}
         </Button>
         <Button
@@ -84,10 +78,10 @@ export function TopToolbar({
             </Popover.Portal>
           </Popover.Root>
         ) : (
-          <LoginLink className={buttonVariants({ variant: "outline" })}>
+          <KindeLoginButton className={buttonVariants({ variant: "outline" })}>
             <User />
             {t("login")}
-          </LoginLink>
+          </KindeLoginButton>
         )}
       </div>
     </header>

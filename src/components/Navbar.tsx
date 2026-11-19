@@ -2,13 +2,10 @@
 
 import { Menu, User, X } from "lucide-react";
 import { useState } from "react";
+import { KindeLoginButton } from "@/components/KindeLoginButton";
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
 import { navLinks } from "@/lib/nav";
-import {
-  RegisterLink,
-  LoginLink,
-} from "@kinde-oss/kinde-auth-nextjs/components";
 export function Navbar() {
   const [open, setOpen] = useState(false);
 
@@ -33,9 +30,9 @@ export function Navbar() {
         </nav>
 
         <div className="flex items-center gap-2">
-          <LoginLink>
+          <KindeLoginButton>
             <User />
-          </LoginLink>
+          </KindeLoginButton>
           <Button
             type="button"
             variant="ghost"

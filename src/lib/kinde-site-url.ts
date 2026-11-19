@@ -10,12 +10,28 @@ export function withHttpProtocol(value: string): string {
   return `https://${trimmed.replace(/^\/+/, "")}`;
 }
 
+const homePaths = new Set(["/", "/he", "/en", "/dashboard"]);
+
+function toDashboardUrl(value: string, site: string): string {
+  const base = site || "http://localhost:3000";
+  const url = new URL(value, base);
+  const path = url.pathname.replace(/\/$/, "") || "/";
+  if (homePaths.has(path)) url.pathname = "/he/dashboard";
+  return url.toString();
+}
+
 export function kindeUrlEnv(env: NodeJS.ProcessEnv = process.env): Record<string, string> {
   const next: Record<string, string> = {};
   for (const key of kindeUrlKeys) {
     const value = env[key];
     if (!value) continue;
     next[key] = withHttpProtocol(value);
+  }
+  const site = (next.KINDE_SITE_URL || "").replace(/\/$/, "");
+  if (next.KINDE_POST_LOGIN_REDIRECT_URL) {
+    next.KINDE_POST_LOGIN_REDIRECT_URL = toDashboardUrl(next.KINDE_POST_LOGIN_REDIRECT_URL, site);
+  } else if (site) {
+    next.KINDE_POST_LOGIN_REDIRECT_URL = `${site}/he/dashboard`;
   }
   return next;
 }
