@@ -11,7 +11,6 @@ import { ActiveToggleButton } from "@/components/admin/ActiveToggleButton";
 import { GripDots } from "@/components/admin/GripDots";
 import { HighlightText } from "@/components/admin/Search";
 import { Button } from "@/components/ui/button";
-import type { SaveSubcategoryNameDto } from "../../../../back-end/src/category/dto/saveSubcategoryName.dto";
 import { refreshDisplayedCategories } from "@/components/sales-manager/CategoriesPanel";
 import { backendUrl } from "@/lib/backend-url";
 import { cn } from "@/lib/utils";
@@ -552,7 +551,15 @@ export function SubcategoryRow({
 }
 
 async function saveSubcategoryName(
-  { subcategoryId, categoryId, content }: SaveSubcategoryNameDto,
+  {
+    subcategoryId,
+    categoryId,
+    content,
+  }: {
+    subcategoryId: string;
+    categoryId: string;
+    content: string;
+  },
   setSubcategoryName: (subcategoryId: string, name: string) => void,
 ) {
   const token = localStorage.getItem("token");
